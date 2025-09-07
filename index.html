@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Narrative Engine</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        .webgl {
+            width: 100%;
+            height: 100vh;
+            position: fixed;
+            z-index: -1;
+            top: 0;
+            left: 0;
+            outline: none;
+        }
+
+        .webgl canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            display: block;
+            width: 100%;
+            height: 100vh;
+        }
+
+        body {
+            background-image: url("https://i.ibb.co/rm2ZShj/sky1.jpg");
+            background-size: cover;
+            background-position: center;
+            backdrop-filter: brightness(40%);
+        }
+        /* Styles for custom modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .custom-modal {
+            background-color: var(--card-bg);
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            text-align: center;
+            color: var(--text-color);
+            max-width: 400px;
+            width: 90%;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+        .modal-overlay.show .custom-modal {
+            transform: scale(1);
+        }
+        .custom-modal p {
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+        }
+        .custom-modal .button-group {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .custom-modal .action-button {
+            width: auto; /* Override full width from general action-button */
+            padding: 10px 25px;
+            margin-top: 0;
+        }
+        .custom-modal .cancel-button {
+            background-color: #6c757d; /* Grey color for cancel */
+        }
+        .custom-modal .cancel-button:hover {
+            background-color: #5a6268;
+        }
+        .history-item {
+            background-color: var(--input-bg);
+            border: 1px solid var(--input-border);
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .history-item .history-text {
+            font-weight: bold;
+            color: var(--text-color);
+            margin-bottom: 5px;
+        }
+        .history-item .secondary-text {
+            font-size: 0.9em;
+        }
+        .history-item .action-button {
+            width: fit-content;
+            align-self: flex-end; /* Align 'Use' button to the right */
+            margin-top: 5px;
+            padding: 5px 10px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="webgl"></div>
+
+    <div class="container">
+        <header class="header">
+            <h1>STORIFY</h1>
+            <button id="theme-toggle-btn" class="nav-button">
+                <i class="fas fa-sun"></i>
+            </button>
+        </header>
+
+        <div class="nav-buttons">
+            <button id="nav-story-generator-btn" class="nav-button active-nav">Story Generator</button>
+            <button id="nav-image-generator-btn" class="nav-button">Image Generator</button>
+            <button id="nav-world-building-btn" class="nav-button">World Builder</button>
+            <button id="nav-ai-scan-btn" class="nav-button">AI Scan</button>
+            <button id="nav-my-stories-btn" class="nav-button">My Stories</button>
+            <button id="nav-user-story-btn" class="nav-button">My Story</button>
+        </div>
+
+        <div id="story-generator-page" class="page-content active-page">
+            <div class="card">
+                <h2>Initiate Narrative</h2>
+                <div class="input-container with-mic">
+                    <textarea id="story-input" placeholder="Describe your story here..." rows="6" maxlength="500"></textarea>
+                    <button id="story-mic-btn" class="mic-button"><i class="fas fa-microphone"></i></button>
+                    <div class="char-counter"><span id="story-word-count">0 words</span> / <span id="char-count">0</span>/500 chars</div>
+                </div>
+                <div class="input-container with-mic">
+                    <textarea id="mashup-prompt-input" placeholder="Mashup with another idea here..." rows="3" maxlength="250"></textarea>
+                    <button id="mashup-mic-btn" class="mic-button"><i class="fas fa-microphone"></i></button>
+                    <div class="char-counter"><span id="mashup-word-count">0 words</span> / <span id="mashup-char-count">0</span>/250 chars</div>
+                </div>
+                <div class="controls-row">
+                    <select id="template-select">
+                        <option value="">Select a template...</option>
+                        <option value="A young wizard discovers a secret society hidden in a modern city">Young Wizard</option>
+                        <option value="A detective with a troubled past investigates a missing person case in a foggy port town">Detective Mystery</option>
+                        <option value="A space crew on a deep-space mission encounters a mysterious, abandoned ship">Space Opera</option>
+                        <option value="A lonely robot finds a lost kitten in a post-apocalyptic wasteland">Post-Apocalyptic</option>
+                    </select>
+                </div>
+                <div class="controls-row">
+                    <select id="genre-select">
+                        <option value="">Random</option>
+                        <option value="fantasy">Fantasy</option>
+                        <option value="sci-fi">Sci-fi</option>
+                        <option value="romance">Romance</option>
+                        <option value="mystery">Mystery</option>
+                        <option value="thriller">Thriller</option>
+                        <option value="horror">Horror</option>
+                        <option value="historical">Historical</option>
+                        <option value="comedy">Comedy</option>
+                        <option value="children’s story">Children’s Story</option>
+                    </select>
+                </div>
+                <div class="controls-row">
+                    <select id="length-preset-select">
+                        <option value="">Length Presets</option>
+                        <option value="150">Short (150 words)</option>
+                        <option value="300">Medium (300 words)</option>
+                        <option value="450">Long (450 words)</option>
+                    </select>
+                    <label for="length-slider">Length:</label>
+                    <input type="range" id="length-slider" min="100" max="500" value="300">
+                    <span id="length-value">300</span> words
+                </div>
+                <div class="controls-row">
+                    <select id="language-select">
+                        <option value="">Language: English</option>
+                        <option value="hindi">Hindi</option>
+                        <option value="spanish">Spanish</option>
+                        <option value="french">French</option>
+                    </select>
+                </div>
+                <div class="controls-row">
+                    <input type="text" id="tone-input" placeholder="Emotion/Tone: e.g., 'joyful', 'suspenseful' or 'melancholic'">
+                </div>
+                <div class="controls-row">
+                    <input type="text" id="character-input" placeholder="Character name, traits, etc.">
+                </div>
+                <div class="controls-row">
+                    <input type="text" id="setting-input" placeholder="Setting: location, time, etc.">
+                </div>
+                <div class="controls-row">
+                    <input type="text" id="style-mimic-input" placeholder="Mimic a style: e.g., 'Hemingway', 'Shakespeare'">
+                </div>
+                <div class="controls-row">
+                    <input type="text" id="narrator-personality-input" placeholder="Narrator persona: e.g., 'a wise old wizard', 'a sarcastic robot'">
+                </div>
+                <div class="controls-row">
+                    <label for="illustration-mode-checkbox">
+                        <input type="checkbox" id="illustration-mode-checkbox"> Story Illustration Mode
+                    </label>
+                </div>
+                <button id="generate-btn" class="action-button">Generate Story</button>
+                <button id="mashup-btn" class="action-button">Mashup Stories</button>
+                <div id="loading-section" class="loading-section">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Processing...</p>
+                </div>
+
+                <details class="collapsible-card">
+                    <summary>AI Story Critique & Enhancement</summary>
+                    <div class="card-content">
+                        <div class="input-container">
+                            <textarea id="critique-input" placeholder="Paste your story here for a critique..." rows="10"></textarea>
+                        </div>
+                        <button id="run-critique-btn" class="action-button">Get Critique</button>
+                        <button id="enhance-btn" class="action-button">Enhance Grammar/Style</button>
+                        <div id="critique-loading-section" class="loading-section">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <p>Analyzing story...</p>
+                        </div>
+                        <div id="critique-result" class="story-content" style="display: none;"></div>
+                    </div>
+                </details>
+
+                <details class="collapsible-card">
+                    <summary>Advanced Writing Tools</summary>
+                    <div class="card-content">
+                        <h3>Plot Outliner</h3>
+                        <div class="input-container">
+                            <textarea id="plot-outliner-input" placeholder="Describe your story idea or paste text for an outline..." rows="5"></textarea>
+                        </div>
+                        <button id="generate-plot-btn" class="action-button">Generate Plot Outline</button>
+                        <div id="plot-outliner-loading-section" class="loading-section">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <p>Generating outline...</p>
+                        </div>
+                        <div id="plot-outliner-result" class="story-content" style="white-space: pre-wrap; display: none;"></div>
+
+                        <h3 style="margin-top: 20px;">Dialogue Writer</h3>
+                        <div class="input-container">
+                            <textarea id="dialogue-context-input" placeholder="Character names, scene description, emotional state (e.g., 'Alice and Bob, in a dark alley, discussing a lost treasure. Alice is nervous, Bob is aggressive')..." rows="3"></textarea>
+                        </div>
+                        <div class="input-container">
+                            <input type="text" id="dialogue-instruction-input" placeholder="What kind of dialogue is needed? (e.g., 'Argument about who keeps the map', 'Flirty banter')">
+                        </div>
+                        <button id="generate-dialogue-btn" class="action-button">Generate Dialogue</button>
+                        <div id="dialogue-writer-loading-section" class="loading-section">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <p>Generating dialogue...</p>
+                        </div>
+                        <div id="dialogue-writer-result" class="story-content" style="white-space: pre-wrap; display: none;"></div>
+                    </div>
+                </details>
+            </div>
+            
+            <details class="collapsible-card">
+                <summary>Prompt History</summary>
+                <div id="story-prompt-history" class="card-content">
+                    <p class="secondary-text">No history yet.</p>
+                </div>
+            </details>
+        </div>
+
+        <div id="story-display-page" class="page-content">
+            <div class="card">
+                <div id="story-title-summary">
+                    <h2 id="story-title">Generated Log</h2>
+                    <p id="story-summary" class="secondary-text"></p>
+                </div>
+                <div class="story-actions">
+                    <button id="play-tts-btn" class="action-button"><i class="fas fa-play"></i> Play</button>
+                    <button id="pause-tts-btn" class="action-button" disabled><i class="fas fa-pause"></i> Pause</button>
+                    <button id="stop-tts-btn" class="action-button" disabled><i class="fas fa-stop"></i> Stop</button>
+                    <button id="copy-btn" class="action-button"><i class="fas fa-copy"></i> Copy</button>
+                    <button id="share-btn" class="action-button"><i class="fas fa-share"></i> Share</button>
+                </div>
+                <button id="save-story-btn" class="action-button">
+                    <i class="fas fa-save"></i> Save Story
+                </button>
+                <button id="generate-comic-btn" class="action-button" style="margin-top: 10px;">
+                    <i class="fas fa-book-open"></i> Generate Comic
+                </button>
+                <div class="story-actions">
+                    <button id="export-pdf-btn" class="action-button"><i class="fas fa-file-pdf"></i> Export PDF</button>
+                    <button id="export-docx-btn" class="action-button"><i class="fas fa-file-word"></i> Export DOCX</button>
+                </div>
+                <div class="controls-row">
+                    <select id="voice-select"></select>
+                    <select id="translate-language-select">
+                        <option value="">Translate to...</option>
+                        <option value="hi">Hindi</option>
+                        <option value="es">Spanish</option>
+                        <option value="fr">French</option>
+                    </select>
+                    <button id="translate-btn" class="action-button"><i class="fas fa-language"></i> Translate</button>
+                </div>
+                <div id="story-display" class="story-content"></div>
+                <div id="comic-panels-container" class="story-content" style="display: none;"></div>
+                <div id="story-illustrations" class="story-content image-container" style="display: none;"></div>
+                <div id="story-choices" class="story-actions" style="display: none;">
+                    <p>What happens next?</p>
+                    <button id="choice-1-btn" class="action-button choice-button">Choice 1</button>
+                    <button id="choice-2-btn" class="action-button choice-button">Choice 2</button>
+                    <button id="choice-3-btn" class="action-button choice-button">Choice 3</button>
+                    <button id="next-chapter-btn" class="action-button choice-button">Next Chapter</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="image-generator-page" class="page-content">
+            <div class="card">
+                <h2>Image Synthesis</h2>
+                <div class="input-container with-mic">
+                    <textarea id="image-prompt-input" placeholder="Describe your image here..." rows="4" maxlength="200"></textarea>
+                    <button id="image-mic-btn" class="mic-button"><i class="fas fa-microphone"></i></button>
+                    <div class="char-counter"><span id="image-word-count">0 words</span> / <span id="image-prompt-char-count">0</span>/200 chars</div>
+                </div>
+                <div class="controls-row">
+                    <select id="style-select">
+                        <option value="">Style: Random</option>
+                        <option value="photorealistic">Photorealistic</option>
+                        <option value="cyberpunk">Cyberpunk</option>
+                        <option value="oil painting">Oil Painting</option>
+                        <option value="watercolor">Watercolor</option>
+                        <option value="pixel art">Pixel Art</option>
+                    </select>
+                </div>
+                <div class="controls-row">
+                    <input type="text" id="style-transfer-input" placeholder="Style: e.g., 'Van Gogh', 'Studio Ghibli', 'chalk drawing'">
+                </div>
+                <div class="controls-row">
+                    <select id="aspect-ratio-select">
+                        <option value="">Aspect Ratio: Square (1:1)</option>
+                        <option value="2:3">Portrait (2:3)</option>
+                        <option value="3:2">Landscape (3:2)</option>
+                        <option value="9:16">Portrait (9:16)</option>
+                        <option value="16:9">Landscape (16:9)</option>
+                    </select>
+                </div>
+                <div class="controls-row">
+                    <select id="resolution-select">
+                        <option value="">Resolution: Standard</option>
+                        <option value="hd">HD</option>
+                        <option value="4k">4K</option>
+                    </select>
+                </div>
+                <div class="controls-row">
+                    <label for="variations-count-select">Variations:</label>
+                    <select id="variations-count-select">
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="4" selected>4</option>
+                    </select>
+                </div>
+                <button id="generate-image-btn" class="action-button">Generate Image</button>
+                <div id="image-loading-section" class="loading-section">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Rendering...</p>
+                </div>
+                <div id="generated-image-container" class="image-container">
+                </div>
+            </div>
+
+            <details class="collapsible-card">
+                <summary>Prompt History</summary>
+                <div id="image-prompt-history" class="card-content">
+                    <p class="secondary-text">No history yet.</p>
+                </div>
+            </details>
+        </div>
+
+        <div id="world-building-page" class="page-content">
+            <div class="card">
+                <h2>AI World Builder</h2>
+                <div class="input-container">
+                    <textarea id="world-building-input" placeholder="Describe the world you want to build here..." rows="10" maxlength="2000"></textarea>
+                    <div class="char-counter"><span id="world-building-char-count">0</span>/2000</div>
+                </div>
+                <button id="generate-world-btn" class="action-button">Generate World</button>
+                <div id="world-building-loading-section" class="loading-section">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Building the world...</p>
+                </div>
+                <div id="world-building-display" class="story-content" style="white-space: pre-wrap;"></div>
+            </div>
+        </div>
+
+        <div id="ai-scan-page" class="page-content">
+            <div class="card">
+                <h2>AI Likeness & Plagiarism Scan</h2>
+                <div class="input-container">
+                    <textarea id="ai-scan-input" placeholder="Paste text here..." rows="10" maxlength="2000"></textarea>
+                    <div class="char-counter"><span id="ai-scan-char-count">0</span>/2000</div>
+                </div>
+                <button id="run-ai-scan-btn" class="action-button">Run AI Likeness Scan</button>
+                <button id="plagiarism-check-btn" class="action-button">Run Plagiarism Check</button>
+                <div id="ai-scan-loading-section" class="loading-section">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Analyzing...</p>
+                </div>
+                <div id="ai-scan-result" class="scan-result">
+                    <h3>AI Likeness Report</h3>
+                    <p>AI Likeness Score: <span id="ai-likeness-score">--</span></p>
+                    <p>AI Likeness Assessment: <span id="ai-likeness-explanation">--</span></p>
+                </div>
+                <div id="plagiarism-result" class="scan-result">
+                    <h3>Plagiarism Report</h3>
+                    <p>Plagiarism Score: <span id="plagiarism-score">--</span></p>
+                    <p>Assessment: <span id="plagiarism-explanation">--</span></p>
+                </div>
+            </div>
+        </div>
+        
+        <div id="my-stories-page" class="page-content">
+            <div class="card">
+                <h2>My Saved Stories</h2>
+                <div id="stories-list" class="story-content">
+                    <p class="secondary-text">You have no saved stories yet.</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="user-story-page" class="page-content">
+            <div class="card">
+                <h2>Submit Your Own Story</h2>
+                <div class="input-container">
+                    <textarea id="user-story-input" placeholder="Paste your story here..." rows="10" maxlength="5000"></textarea>
+                    <div class="char-counter"><span id="user-story-char-count">0</span>/5000</div>
+                </div>
+                <button id="save-user-story-btn" class="action-button">Save My Story</button>
+            </div>
+        </div>
+        
+        <footer class="footer">
+            <p>&copy; 2024 SynthCorp</p>
+        </footer>
+    </div>
+    
+    <div id="notification" class="notification">
+        <span class="notification-text"></span>
+    </div>
+
+    <!-- Custom Confirmation Modal -->
+    <div id="confirmation-modal-overlay" class="modal-overlay">
+        <div class="custom-modal">
+            <p id="confirmation-modal-message">Are you sure?</p>
+            <div class="button-group">
+                <button id="confirm-yes" class="action-button">Yes</button>
+                <button id="confirm-no" class="action-button cancel-button">No</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.47.1/docxtemplater.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/docx/8.5.0/docx.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <!-- Removed Firebase SDK imports -->
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.161.0/examples/jsm/"
+            }
+        }
+    </script>
+    
+    <script src="script.js"></script>
+    <script type="module" src="three_background.js"></script>
+</body>
+</html>
